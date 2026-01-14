@@ -151,9 +151,10 @@
 
   /* Floating action button */
   .fab {
-    @apply fixed right-4 z-40 w-14 h-14 rounded-full bg-primary text-primary-foreground;
+    @apply fixed z-40 w-14 h-14 rounded-full bg-primary text-primary-foreground;
     @apply shadow-lg flex items-center justify-center active:scale-95 transition-transform;
-    bottom: calc(var(--nav-height) + 1rem);
+    right: 1rem;
+    bottom: 5.5rem;
   }
 
   /* Empty state */
