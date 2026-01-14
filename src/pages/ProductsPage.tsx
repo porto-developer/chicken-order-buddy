@@ -55,6 +55,11 @@ export default function ProductsPage() {
       <PageHeader 
         title="Produtos" 
         subtitle={`${products?.length || 0} produto${products?.length !== 1 ? 's' : ''}`}
+        action={
+          <Button onClick={() => setIsFormOpen(true)} className="h-12 w-12 rounded-full p-0">
+            <Plus className="w-6 h-6" />
+          </Button>
+        }
       />
 
       {isLoading ? (
@@ -121,13 +126,6 @@ export default function ProductsPage() {
         </div>
       )}
 
-      {/* FAB for new product */}
-      <button
-        className="fab"
-        onClick={() => setIsFormOpen(true)}
-      >
-        <Plus className="w-7 h-7" />
-      </button>
 
       <ProductFormSheet
         open={isFormOpen}

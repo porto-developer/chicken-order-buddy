@@ -42,6 +42,11 @@ export default function OrdersPage() {
       <PageHeader 
         title="Pedidos" 
         subtitle={`${pendingOrders.length} pendente${pendingOrders.length !== 1 ? 's' : ''}`}
+        action={
+          <Button onClick={() => setIsNewOrderOpen(true)} className="h-12 w-12 rounded-full p-0">
+            <Plus className="w-6 h-6" />
+          </Button>
+        }
       />
 
       {isLoading ? (
@@ -156,13 +161,6 @@ export default function OrdersPage() {
         </div>
       )}
 
-      {/* FAB for new order */}
-      <button
-        className="fab"
-        onClick={() => setIsNewOrderOpen(true)}
-      >
-        <Plus className="w-7 h-7" />
-      </button>
 
       <NewOrderSheet 
         open={isNewOrderOpen} 

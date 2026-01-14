@@ -75,6 +75,11 @@ export default function CategoriesPage() {
       <PageHeader 
         title="Categorias" 
         subtitle={`${categories?.length || 0} categoria${categories?.length !== 1 ? 's' : ''}`}
+        action={
+          <Button onClick={() => handleOpenForm()} className="h-12 w-12 rounded-full p-0">
+            <Plus className="w-6 h-6" />
+          </Button>
+        }
       />
 
       {isLoading ? (
@@ -145,13 +150,6 @@ export default function CategoriesPage() {
         </div>
       )}
 
-      {/* FAB for new category */}
-      <button
-        className="fab"
-        onClick={() => handleOpenForm()}
-      >
-        <Plus className="w-7 h-7" />
-      </button>
 
       <Dialog open={isFormOpen} onOpenChange={handleCloseForm}>
         <DialogContent className="sm:max-w-md">
