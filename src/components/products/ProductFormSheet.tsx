@@ -10,9 +10,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { useCategories } from "@/hooks/useCategories";
 import { useCreateProduct, useUpdateProduct } from "@/hooks/useProducts";
+import { useSalesTypes } from "@/hooks/useSalesTypes";
+import { useProductPrices, useUpsertProductPrice, useDeleteProductPrice } from "@/hooks/useProductPrices";
 import { Product } from "@/types/database";
+import { Trash2 } from "lucide-react";
 
 interface ProductFormSheetProps {
   open: boolean;
@@ -25,10 +34,15 @@ export function ProductFormSheet({ open, onOpenChange, product }: ProductFormShe
   const [categoryId, setCategoryId] = useState<string>("");
   const [price, setPrice] = useState("");
   const [stock, setStock] = useState("");
+  const [customPrices, setCustomPrices] = useState<Record<string, string>>({});
 
   const { data: categories } = useCategories();
+  const { data: salesTypes } = useSalesTypes();
+  const { data: productPrices } = useProductPrices(product?.id);
   const createProduct = useCreateProduct();
   const updateProduct = useUpdateProduct();
+  const upsertPrice = useUpsertProductPrice();
+  const deletePrice = useDeleteProductPrice();
 
   const isEditing = !!product;
 
@@ -43,8 +57,20 @@ export function ProductFormSheet({ open, onOpenChange, product }: ProductFormShe
       setCategoryId("");
       setPrice("");
       setStock("0");
+      setCustomPrices({});
     }
   }, [product, open]);
+
+  // Load existing custom prices when editing
+  useEffect(() => {
+    if (productPrices) {
+      const prices: Record<string, string> = {};
+      productPrices.forEach(pp => {
+        prices[pp.sales_type_id] = pp.price.toString();
+      });
+      setCustomPrices(prices);
+    }
+  }, [productPrices]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,18 +84,60 @@ export function ProductFormSheet({ open, onOpenChange, product }: ProductFormShe
 
     if (isEditing && product) {
       await updateProduct.mutateAsync({ id: product.id, ...data });
+      
+      // Save custom prices
+      for (const salesTypeId of Object.keys(customPrices)) {
+        const priceValue = parseFloat(customPrices[salesTypeId]);
+        if (!isNaN(priceValue) && priceValue > 0) {
+          await upsertPrice.mutateAsync({
+            product_id: product.id,
+            sales_type_id: salesTypeId,
+            price: priceValue,
+          });
+        }
+      }
     } else {
-      await createProduct.mutateAsync(data);
+      const newProduct = await createProduct.mutateAsync(data);
+      
+      // Save custom prices for new product
+      for (const salesTypeId of Object.keys(customPrices)) {
+        const priceValue = parseFloat(customPrices[salesTypeId]);
+        if (!isNaN(priceValue) && priceValue > 0) {
+          await upsertPrice.mutateAsync({
+            product_id: newProduct.id,
+            sales_type_id: salesTypeId,
+            price: priceValue,
+          });
+        }
+      }
     }
 
     onOpenChange(false);
+  };
+
+  const handleCustomPriceChange = (salesTypeId: string, value: string) => {
+    setCustomPrices(prev => ({
+      ...prev,
+      [salesTypeId]: value,
+    }));
+  };
+
+  const handleRemoveCustomPrice = async (salesTypeId: string) => {
+    if (product) {
+      await deletePrice.mutateAsync({ productId: product.id, salesTypeId });
+    }
+    setCustomPrices(prev => {
+      const updated = { ...prev };
+      delete updated[salesTypeId];
+      return updated;
+    });
   };
 
   const isPending = createProduct.isPending || updateProduct.isPending;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="h-auto rounded-t-3xl">
+      <SheetContent side="bottom" className="h-[85vh] rounded-t-3xl overflow-y-auto">
         <SheetHeader className="mb-6">
           <SheetTitle className="text-xl">
             {isEditing ? "Editar Produto" : "Novo Produto"}
@@ -108,7 +176,7 @@ export function ProductFormSheet({ open, onOpenChange, product }: ProductFormShe
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="price">Preço (R$)</Label>
+              <Label htmlFor="price">Preço Base (R$)</Label>
               <Input
                 id="price"
                 type="number"
@@ -137,7 +205,55 @@ export function ProductFormSheet({ open, onOpenChange, product }: ProductFormShe
             </div>
           </div>
 
-          <div className="pt-4">
+          {/* Custom Prices per Sales Type */}
+          <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="custom-prices" className="border rounded-xl px-4">
+              <AccordionTrigger className="py-3">
+                <span className="text-sm font-medium">
+                  Preços por Tipo de Venda
+                  {Object.keys(customPrices).length > 0 && (
+                    <span className="ml-2 text-xs text-primary">
+                      ({Object.keys(customPrices).length} configurado{Object.keys(customPrices).length !== 1 ? 's' : ''})
+                    </span>
+                  )}
+                </span>
+              </AccordionTrigger>
+              <AccordionContent className="pb-4">
+                <p className="text-xs text-muted-foreground mb-3">
+                  Configure preços diferentes para cada tipo de venda (ex: taxas de delivery)
+                </p>
+                <div className="space-y-3">
+                  {salesTypes?.map(type => (
+                    <div key={type.id} className="flex items-center gap-2">
+                      <Label className="w-24 text-sm truncate">{type.name}</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={customPrices[type.id] || ""}
+                        onChange={e => handleCustomPriceChange(type.id, e.target.value)}
+                        placeholder={price || "Preço base"}
+                        className="flex-1 h-10"
+                      />
+                      {customPrices[type.id] && (
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="h-10 w-10 text-destructive shrink-0"
+                          onClick={() => handleRemoveCustomPrice(type.id)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+
+          <div className="pt-4 pb-8">
             <Button
               type="submit"
               className="w-full btn-touch"

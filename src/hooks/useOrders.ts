@@ -23,6 +23,7 @@ interface CreateOrderInput {
   customer_name?: string;
   notes?: string;
   items: CartItem[];
+  customTotal?: number;
 }
 
 export function useCreateOrder() {
@@ -30,10 +31,14 @@ export function useCreateOrder() {
   
   return useMutation({
     mutationFn: async (input: CreateOrderInput) => {
-      const total = input.items.reduce(
-        (sum, item) => sum + item.product.price * item.quantity, 
+      // Calculate total from cart items using their unit prices
+      const calculatedTotal = input.items.reduce(
+        (sum, item) => sum + item.unitPrice * item.quantity, 
         0
       );
+      
+      // Use custom total if provided, otherwise use calculated total
+      const total = input.customTotal !== undefined ? input.customTotal : calculatedTotal;
 
       // Create order
       const { data: order, error: orderError } = await supabase
@@ -50,13 +55,13 @@ export function useCreateOrder() {
       
       if (orderError) throw orderError;
 
-      // Create order items
+      // Create order items with the actual unit prices used
       const orderItems = input.items.map(item => ({
         order_id: order.id,
         product_id: item.product.id,
         product_name: item.product.name,
         quantity: item.quantity,
-        unit_price: item.product.price,
+        unit_price: item.unitPrice,
       }));
 
       const { error: itemsError } = await supabase

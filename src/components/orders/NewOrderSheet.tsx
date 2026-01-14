@@ -1,12 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Minus, ShoppingCart, Trash2 } from "lucide-react";
+import { Plus, Minus, ShoppingCart, Trash2, Edit2 } from "lucide-react";
 import { useProducts } from "@/hooks/useProducts";
 import { useSalesTypes } from "@/hooks/useSalesTypes";
 import { useCreateOrder } from "@/hooks/useOrders";
+import { getProductPrice } from "@/hooks/useProductPrices";
 import { CartItem, Product, SalesType } from "@/types/database";
 import { toast } from "sonner";
 
@@ -21,6 +22,8 @@ export function NewOrderSheet({ open, onOpenChange }: NewOrderSheetProps) {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [customerName, setCustomerName] = useState("");
   const [notes, setNotes] = useState("");
+  const [customTotal, setCustomTotal] = useState<string>("");
+  const [isEditingTotal, setIsEditingTotal] = useState(false);
   
   const { data: products } = useProducts();
   const { data: salesTypes } = useSalesTypes();
@@ -28,9 +31,26 @@ export function NewOrderSheet({ open, onOpenChange }: NewOrderSheetProps) {
 
   const availableProducts = products?.filter(p => p.stock > 0) || [];
   
-  const total = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+  // Calculate total from cart items using their specific unit prices
+  const calculatedTotal = cart.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
+  
+  // Use custom total if set, otherwise use calculated total
+  const total = customTotal !== "" ? parseFloat(customTotal) || 0 : calculatedTotal;
+
+  // Reset custom total when cart changes
+  useEffect(() => {
+    if (!isEditingTotal) {
+      setCustomTotal("");
+    }
+  }, [cart, isEditingTotal]);
+
+  const getPrice = (product: Product): number => {
+    if (!selectedType) return product.price;
+    return getProductPrice(product, selectedType.id);
+  };
 
   const addToCart = (product: Product) => {
+    const unitPrice = getPrice(product);
     const existing = cart.find(item => item.product.id === product.id);
     if (existing) {
       if (existing.quantity < product.stock) {
@@ -43,7 +63,7 @@ export function NewOrderSheet({ open, onOpenChange }: NewOrderSheetProps) {
         toast.error("Estoque insuficiente");
       }
     } else {
-      setCart([...cart, { product, quantity: 1 }]);
+      setCart([...cart, { product, quantity: 1, unitPrice }]);
     }
   };
 
@@ -75,15 +95,11 @@ export function NewOrderSheet({ open, onOpenChange }: NewOrderSheetProps) {
       customer_name: customerName || undefined,
       notes: notes || undefined,
       items: cart,
+      customTotal: customTotal !== "" ? total : undefined,
     });
 
     // Reset
-    setStep('type');
-    setSelectedType(null);
-    setCart([]);
-    setCustomerName("");
-    setNotes("");
-    onOpenChange(false);
+    handleClose();
   };
 
   const handleClose = () => {
@@ -92,7 +108,21 @@ export function NewOrderSheet({ open, onOpenChange }: NewOrderSheetProps) {
     setCart([]);
     setCustomerName("");
     setNotes("");
+    setCustomTotal("");
+    setIsEditingTotal(false);
     onOpenChange(false);
+  };
+
+  const handleTotalEdit = () => {
+    setCustomTotal(calculatedTotal.toFixed(2));
+    setIsEditingTotal(true);
+  };
+
+  const handleTotalBlur = () => {
+    setIsEditingTotal(false);
+    if (customTotal === "" || parseFloat(customTotal) === calculatedTotal) {
+      setCustomTotal("");
+    }
   };
 
   return (
@@ -136,12 +166,21 @@ export function NewOrderSheet({ open, onOpenChange }: NewOrderSheetProps) {
               ) : (
                 availableProducts.map(product => {
                   const cartItem = cart.find(i => i.product.id === product.id);
+                  const displayPrice = getPrice(product);
+                  const hasCustomPrice = selectedType && product.product_prices?.some(
+                    pp => pp.sales_type_id === selectedType.id
+                  );
+                  
                   return (
                     <div key={product.id} className="card-touch flex items-center gap-3">
                       <div className="flex-1">
                         <div className="font-medium">{product.name}</div>
                         <div className="text-sm text-muted-foreground">
-                          R$ {product.price.toFixed(2)} • {product.stock} em estoque
+                          R$ {displayPrice.toFixed(2)}
+                          {hasCustomPrice && (
+                            <span className="ml-1 text-xs text-primary">(preço {selectedType?.name})</span>
+                          )}
+                          {" "}• {product.stock} em estoque
                         </div>
                       </div>
                       
@@ -198,11 +237,11 @@ export function NewOrderSheet({ open, onOpenChange }: NewOrderSheetProps) {
                     <div className="flex-1">
                       <div className="font-medium">{item.product.name}</div>
                       <div className="text-sm text-muted-foreground">
-                        {item.quantity}x R$ {item.product.price.toFixed(2)}
+                        {item.quantity}x R$ {item.unitPrice.toFixed(2)}
                       </div>
                     </div>
                     <div className="font-semibold">
-                      R$ {(item.product.price * item.quantity).toFixed(2)}
+                      R$ {(item.unitPrice * item.quantity).toFixed(2)}
                     </div>
                     <Button
                       size="icon"
@@ -214,11 +253,42 @@ export function NewOrderSheet({ open, onOpenChange }: NewOrderSheetProps) {
                     </Button>
                   </div>
                 ))}
-                <div className="border-t pt-3 flex justify-between items-center">
-                  <span className="font-semibold">Total</span>
-                  <span className="text-xl font-bold text-primary">
-                    R$ {total.toFixed(2)}
-                  </span>
+                
+                <div className="border-t pt-3">
+                  <div className="flex justify-between items-center text-sm text-muted-foreground mb-2">
+                    <span>Subtotal</span>
+                    <span>R$ {calculatedTotal.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="font-semibold">Total Final</span>
+                    {isEditingTotal ? (
+                      <div className="flex items-center gap-2">
+                        <span>R$</span>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={customTotal}
+                          onChange={e => setCustomTotal(e.target.value)}
+                          onBlur={handleTotalBlur}
+                          className="w-24 h-8 text-right"
+                          autoFocus
+                        />
+                      </div>
+                    ) : (
+                      <button
+                        className="flex items-center gap-2 text-xl font-bold text-primary hover:underline"
+                        onClick={handleTotalEdit}
+                      >
+                        R$ {total.toFixed(2)}
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                  {customTotal !== "" && parseFloat(customTotal) !== calculatedTotal && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Valor ajustado manualmente (original: R$ {calculatedTotal.toFixed(2)})
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -249,7 +319,7 @@ export function NewOrderSheet({ open, onOpenChange }: NewOrderSheetProps) {
                 <ShoppingCart className="w-5 h-5 text-primary" />
                 <span className="font-medium">{cart.length} item(s)</span>
               </div>
-              <span className="font-bold text-primary">R$ {total.toFixed(2)}</span>
+              <span className="font-bold text-primary">R$ {calculatedTotal.toFixed(2)}</span>
             </div>
           )}
 

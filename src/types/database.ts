@@ -12,6 +12,14 @@ export interface SalesType {
   created_at: string;
 }
 
+export interface ProductPrice {
+  id: string;
+  product_id: string;
+  sales_type_id: string;
+  price: number;
+  created_at: string;
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -21,6 +29,7 @@ export interface Product {
   created_at: string;
   updated_at: string;
   category?: Category;
+  product_prices?: ProductPrice[];
 }
 
 export interface Order {
@@ -50,4 +59,5 @@ export interface OrderItem {
 export interface CartItem {
   product: Product;
   quantity: number;
+  unitPrice: number; // The actual price used (may be sales-type specific)
 }
