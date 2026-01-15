@@ -1,5 +1,13 @@
 import { useState, useEffect } from "react";
-import { Plus, ClipboardList, Check, Package, X, Search } from "lucide-react";
+import {
+  Plus,
+  ClipboardList,
+  Check,
+  Package,
+  X,
+  Search,
+  ShoppingBag,
+} from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -46,6 +54,22 @@ export default function OrdersPage() {
 
   const pendingOrders = filteredOrders.filter((o) => o.status === "pending");
   const otherOrders = filteredOrders.filter((o) => o.status !== "pending");
+
+  // Calculate statistics for pending orders
+  const pendingStats = {
+    productCounts: pendingOrders.reduce((acc, order) => {
+      order.order_items?.forEach((item) => {
+        const productName = item.product_name;
+        acc[productName] = (acc[productName] || 0) + item.quantity;
+      });
+      return acc;
+    }, {} as Record<string, number>),
+    salesTypeCounts: pendingOrders.reduce((acc, order) => {
+      const typeName = order.sales_type?.name || "Sem tipo";
+      acc[typeName] = (acc[typeName] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>),
+  };
 
   // Group orders by date
   const groupOrdersByDate = (orders: typeof otherOrders) => {
@@ -111,6 +135,64 @@ export default function OrdersPage() {
           </Button>
         }
       />
+
+      {/* Pending Orders Statistics */}
+      {pendingOrders.length > 0 && (
+        <div className="mb-4 space-y-3">
+          {/* Products Reserved */}
+          {Object.keys(pendingStats.productCounts).length > 0 && (
+            <div className="card-touch">
+              <div className="flex items-center gap-2 mb-3">
+                <ShoppingBag className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                  Produtos Reservados
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                {Object.entries(pendingStats.productCounts)
+                  .sort(([, a], [, b]) => b - a)
+                  .map(([product, count]) => (
+                    <div
+                      key={product}
+                      className="flex items-center justify-between p-2 bg-accent/50 rounded-lg"
+                    >
+                      <span className="text-sm font-medium truncate">
+                        {product}
+                      </span>
+                      <span className="text-sm font-bold text-primary ml-2">
+                        {count}x
+                      </span>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
+
+          {/* Sales Type Breakdown */}
+          {Object.keys(pendingStats.salesTypeCounts).length > 1 && (
+            <div className="card-touch">
+              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                Por Tipo de Venda
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {Object.entries(pendingStats.salesTypeCounts).map(
+                  ([type, count]) => (
+                    <div
+                      key={type}
+                      className="inline-flex items-center gap-1 px-3 py-1 bg-accent rounded-full"
+                    >
+                      <span className="text-sm">{type}</span>
+                      <span className="text-sm font-bold text-primary">
+                        {count}
+                      </span>
+                    </div>
+                  )
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Search Bar */}
       <div className="mb-4">
@@ -186,6 +268,11 @@ export default function OrdersPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="font-semibold text-foreground">
+                          {order.customer_name && (
+                            <span className="font-semibold text-foreground">
+                              {order.customer_name} -{" "}
+                            </span>
+                          )}
                           {order.external_order_id
                             ? `#${order.external_order_id}`
                             : `#${order.id.slice(-4).toUpperCase()}`}
@@ -195,11 +282,6 @@ export default function OrdersPage() {
                       <div className="text-sm text-muted-foreground">
                         {order.sales_type?.name} • R$ {order.total.toFixed(2)}
                       </div>
-                      {order.customer_name && (
-                        <div className="text-sm text-muted-foreground truncate">
-                          {order.customer_name}
-                        </div>
-                      )}
                       <div className="text-xs text-muted-foreground mt-1">
                         {format(new Date(order.created_at), "HH:mm", {
                           locale: ptBR,
@@ -251,6 +333,11 @@ export default function OrdersPage() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
                             <span className="font-medium text-foreground">
+                              {order.customer_name && (
+                                <span className="font-semibold text-foreground">
+                                  {order.customer_name} -{" "}
+                                </span>
+                              )}
                               {order.external_order_id
                                 ? `#${order.external_order_id}`
                                 : `#${order.id.slice(-4).toUpperCase()}`}

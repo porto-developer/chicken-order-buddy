@@ -7,6 +7,7 @@ import { BottomNavigation } from "@/components/BottomNavigation";
 import OrdersPage from "./pages/OrdersPage";
 import ProductsPage from "./pages/ProductsPage";
 import CategoriesPage from "./pages/CategoriesPage";
+import ReportsPage from "./pages/ReportsPage";
 import SettingsPage from "./pages/SettingsPage";
 import NotFound from "./pages/NotFound";
 
@@ -22,6 +23,7 @@ const App = () => (
           <Route path="/" element={<OrdersPage />} />
           <Route path="/products" element={<ProductsPage />} />
           <Route path="/categories" element={<CategoriesPage />} />
+          <Route path="/reports" element={<ReportsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

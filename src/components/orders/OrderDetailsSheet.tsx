@@ -65,7 +65,10 @@ export function OrderDetailsSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="h-[85vh] rounded-t-3xl p-0 flex flex-col">
+      <SheetContent
+        side="bottom"
+        className="h-[85vh] rounded-t-3xl p-0 flex flex-col"
+      >
         <SheetHeader className="p-4 border-b shrink-0">
           <div className="flex items-center justify-between mr-5">
             <SheetTitle className="text-xl">

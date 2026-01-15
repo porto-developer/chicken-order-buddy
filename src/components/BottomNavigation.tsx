@@ -1,11 +1,12 @@
-import { ClipboardList, Package, FolderOpen, Settings } from "lucide-react";
+import { ClipboardList, Package, FolderOpen, BarChart3, Settings } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 const navItems = [
   { path: "/", icon: ClipboardList, label: "Pedidos" },
   { path: "/products", icon: Package, label: "Produtos" },
+  { path: "/reports", icon: BarChart3, label: "Gráficos" },
   { path: "/categories", icon: FolderOpen, label: "Categorias" },
-  { path: "/settings", icon: Settings, label: "Config" },
+  { path: "/settings", icon: Settings, label: "Mais" },
 ];
 
 export function BottomNavigation() {
@@ -20,8 +21,8 @@ export function BottomNavigation() {
           onClick={() => navigate(path)}
           className={`nav-item ${location.pathname === path ? "active" : ""}`}
         >
-          <Icon className="w-6 h-6" />
-          <span className="text-xs font-medium">{label}</span>
+          <Icon />
+          <span className="text-[10px] font-medium leading-tight">{label}</span>
         </button>
       ))}
     </nav>
