@@ -51,7 +51,7 @@
     --radius: 0.75rem;
 
     /* Bottom nav height for mobile */
-    --nav-height: 4.5rem;
+    --nav-height: 1rem;
   }
 
   .dark {
@@ -125,7 +125,7 @@
 
   /* Bottom navigation */
   .bottom-nav {
-    @apply fixed bottom-0 left-0 right-0 bg-card border-t border-border h-[var(--nav-height)] z-50;
+    @apply fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50;
     @apply flex items-center justify-around px-2;
     padding-bottom: env(safe-area-inset-bottom);
   }

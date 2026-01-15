@@ -67,7 +67,7 @@ export function OrderDetailsSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" className="h-[85vh] rounded-t-3xl p-0">
         <SheetHeader className="p-4 border-b">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mr-5">
             <SheetTitle className="text-xl">
               Pedido #{order.id.slice(-4).toUpperCase()}
             </SheetTitle>
