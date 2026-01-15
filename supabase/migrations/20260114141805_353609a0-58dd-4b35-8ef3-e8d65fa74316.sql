@@ -90,13 +90,6 @@ INSERT INTO public.sales_types (name) VALUES
     ('99Food'),
     ('iFood');
 
--- Insert sample categories
-INSERT INTO public.categories (name) VALUES 
-    ('Frango Frito'),
-    ('Frango Assado'),
-    ('Porções'),
-    ('Bebidas');
-
 -- Enable realtime for orders
 ALTER PUBLICATION supabase_realtime ADD TABLE public.orders;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.order_items;

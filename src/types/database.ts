@@ -1,4 +1,4 @@
-export type OrderStatus = 'pending' | 'picked_up' | 'completed' | 'cancelled';
+export type OrderStatus = "pending" | "picked_up" | "completed" | "cancelled";
 
 export interface Category {
   id: string;
@@ -37,6 +37,8 @@ export interface Order {
   sales_type_id: string | null;
   status: OrderStatus;
   total: number;
+  discount: number;
+  external_order_id: string | null;
   customer_name: string | null;
   notes: string | null;
   created_at: string;

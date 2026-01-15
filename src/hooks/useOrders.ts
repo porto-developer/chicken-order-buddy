@@ -11,7 +11,7 @@ export function useOrders() {
         .from("orders")
         .select("*, sales_type:sales_types(*), order_items(*)")
         .order("created_at", { ascending: false });
-      
+
       if (error) throw error;
       return data as Order[];
     },
@@ -21,24 +21,26 @@ export function useOrders() {
 interface CreateOrderInput {
   sales_type_id: string;
   customer_name?: string;
+  external_order_id?: string;
   notes?: string;
   items: CartItem[];
-  customTotal?: number;
+  discount?: number;
 }
 
 export function useCreateOrder() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async (input: CreateOrderInput) => {
-      // Calculate total from cart items using their unit prices
-      const calculatedTotal = input.items.reduce(
-        (sum, item) => sum + item.unitPrice * item.quantity, 
+      // Calculate subtotal from cart items using their unit prices
+      const subtotal = input.items.reduce(
+        (sum, item) => sum + item.unitPrice * item.quantity,
         0
       );
-      
-      // Use custom total if provided, otherwise use calculated total
-      const total = input.customTotal !== undefined ? input.customTotal : calculatedTotal;
+
+      // Apply discount
+      const discount = input.discount || 0;
+      const total = Math.max(0, subtotal - discount);
 
       // Create order
       const { data: order, error: orderError } = await supabase
@@ -46,17 +48,19 @@ export function useCreateOrder() {
         .insert({
           sales_type_id: input.sales_type_id,
           customer_name: input.customer_name || null,
+          external_order_id: input.external_order_id || null,
           notes: input.notes || null,
           total,
-          status: 'pending' as OrderStatus,
+          discount,
+          status: "pending" as OrderStatus,
         })
         .select()
         .single();
-      
+
       if (orderError) throw orderError;
 
       // Create order items with the actual unit prices used
-      const orderItems = input.items.map(item => ({
+      const orderItems = input.items.map((item) => ({
         order_id: order.id,
         product_id: item.product.id,
         product_name: item.product.name,
@@ -67,7 +71,7 @@ export function useCreateOrder() {
       const { error: itemsError } = await supabase
         .from("order_items")
         .insert(orderItems);
-      
+
       if (itemsError) throw itemsError;
 
       // Update stock for each product
@@ -94,16 +98,24 @@ export function useCreateOrder() {
 
 export function useUpdateOrderStatus() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: async ({ id, status, restoreStock }: { id: string; status: OrderStatus; restoreStock?: boolean }) => {
+    mutationFn: async ({
+      id,
+      status,
+      restoreStock,
+    }: {
+      id: string;
+      status: OrderStatus;
+      restoreStock?: boolean;
+    }) => {
       // If cancelling, restore stock
       if (restoreStock) {
         const { data: orderItems } = await supabase
           .from("order_items")
           .select("*, product:products(*)")
           .eq("order_id", id);
-        
+
         if (orderItems) {
           for (const item of orderItems) {
             if (item.product) {
@@ -123,14 +135,14 @@ export function useUpdateOrderStatus() {
         .eq("id", id)
         .select()
         .single();
-      
+
       if (error) throw error;
       return data;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["orders"] });
       queryClient.invalidateQueries({ queryKey: ["products"] });
-      
+
       const messages: Record<OrderStatus, string> = {
         pending: "Pedido marcado como pendente",
         picked_up: "Pedido marcado como retirado",
@@ -147,16 +159,22 @@ export function useUpdateOrderStatus() {
 
 export function useDeleteOrder() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: async ({ id, restoreStock }: { id: string; restoreStock: boolean }) => {
+    mutationFn: async ({
+      id,
+      restoreStock,
+    }: {
+      id: string;
+      restoreStock: boolean;
+    }) => {
       // Restore stock if needed
       if (restoreStock) {
         const { data: orderItems } = await supabase
           .from("order_items")
           .select("*, product:products(*)")
           .eq("order_id", id);
-        
+
         if (orderItems) {
           for (const item of orderItems) {
             if (item.product) {
@@ -170,11 +188,8 @@ export function useDeleteOrder() {
         }
       }
 
-      const { error } = await supabase
-        .from("orders")
-        .delete()
-        .eq("id", id);
-      
+      const { error } = await supabase.from("orders").delete().eq("id", id);
+
       if (error) throw error;
     },
     onSuccess: () => {

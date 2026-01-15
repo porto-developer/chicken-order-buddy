@@ -1,9 +1,14 @@
 import { useState, useEffect } from "react";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Minus, ShoppingCart, Trash2, Edit2 } from "lucide-react";
+import { Plus, Minus, ShoppingCart, Trash2, Percent } from "lucide-react";
 import { useProducts } from "@/hooks/useProducts";
 import { useSalesTypes } from "@/hooks/useSalesTypes";
 import { useCreateOrder } from "@/hooks/useOrders";
@@ -17,32 +22,29 @@ interface NewOrderSheetProps {
 }
 
 export function NewOrderSheet({ open, onOpenChange }: NewOrderSheetProps) {
-  const [step, setStep] = useState<'type' | 'products' | 'review'>('type');
+  const [step, setStep] = useState<"type" | "products" | "review">("type");
   const [selectedType, setSelectedType] = useState<SalesType | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [customerName, setCustomerName] = useState("");
+  const [externalOrderId, setExternalOrderId] = useState("");
   const [notes, setNotes] = useState("");
-  const [customTotal, setCustomTotal] = useState<string>("");
-  const [isEditingTotal, setIsEditingTotal] = useState(false);
-  
+  const [discount, setDiscount] = useState<string>("");
+
   const { data: products } = useProducts();
   const { data: salesTypes } = useSalesTypes();
   const createOrder = useCreateOrder();
 
-  const availableProducts = products?.filter(p => p.stock > 0) || [];
-  
-  // Calculate total from cart items using their specific unit prices
-  const calculatedTotal = cart.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
-  
-  // Use custom total if set, otherwise use calculated total
-  const total = customTotal !== "" ? parseFloat(customTotal) || 0 : calculatedTotal;
+  const availableProducts = products?.filter((p) => p.stock > 0) || [];
 
-  // Reset custom total when cart changes
-  useEffect(() => {
-    if (!isEditingTotal) {
-      setCustomTotal("");
-    }
-  }, [cart, isEditingTotal]);
+  // Calculate subtotal from cart items using their specific unit prices
+  const subtotal = cart.reduce(
+    (sum, item) => sum + item.unitPrice * item.quantity,
+    0
+  );
+
+  // Calculate discount and total
+  const discountValue = discount !== "" ? parseFloat(discount) || 0 : 0;
+  const total = Math.max(0, subtotal - discountValue);
 
   const getPrice = (product: Product): number => {
     if (!selectedType) return product.price;
@@ -51,14 +53,16 @@ export function NewOrderSheet({ open, onOpenChange }: NewOrderSheetProps) {
 
   const addToCart = (product: Product) => {
     const unitPrice = getPrice(product);
-    const existing = cart.find(item => item.product.id === product.id);
+    const existing = cart.find((item) => item.product.id === product.id);
     if (existing) {
       if (existing.quantity < product.stock) {
-        setCart(cart.map(item =>
-          item.product.id === product.id
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
-        ));
+        setCart(
+          cart.map((item) =>
+            item.product.id === product.id
+              ? { ...item, quantity: item.quantity + 1 }
+              : item
+          )
+        );
       } else {
         toast.error("Estoque insuficiente");
       }
@@ -68,34 +72,37 @@ export function NewOrderSheet({ open, onOpenChange }: NewOrderSheetProps) {
   };
 
   const updateQuantity = (productId: string, delta: number) => {
-    const item = cart.find(i => i.product.id === productId);
+    const item = cart.find((i) => i.product.id === productId);
     if (!item) return;
-    
+
     const newQty = item.quantity + delta;
     if (newQty <= 0) {
-      setCart(cart.filter(i => i.product.id !== productId));
+      setCart(cart.filter((i) => i.product.id !== productId));
     } else if (newQty <= item.product.stock) {
-      setCart(cart.map(i =>
-        i.product.id === productId ? { ...i, quantity: newQty } : i
-      ));
+      setCart(
+        cart.map((i) =>
+          i.product.id === productId ? { ...i, quantity: newQty } : i
+        )
+      );
     } else {
       toast.error("Estoque insuficiente");
     }
   };
 
   const removeFromCart = (productId: string) => {
-    setCart(cart.filter(i => i.product.id !== productId));
+    setCart(cart.filter((i) => i.product.id !== productId));
   };
 
   const handleSubmit = async () => {
     if (!selectedType || cart.length === 0) return;
-    
+
     await createOrder.mutateAsync({
       sales_type_id: selectedType.id,
       customer_name: customerName || undefined,
+      external_order_id: externalOrderId || undefined,
       notes: notes || undefined,
       items: cart,
-      customTotal: customTotal !== "" ? total : undefined,
+      discount: discountValue > 0 ? discountValue : undefined,
     });
 
     // Reset
@@ -103,26 +110,14 @@ export function NewOrderSheet({ open, onOpenChange }: NewOrderSheetProps) {
   };
 
   const handleClose = () => {
-    setStep('type');
+    setStep("type");
     setSelectedType(null);
     setCart([]);
     setCustomerName("");
+    setExternalOrderId("");
     setNotes("");
-    setCustomTotal("");
-    setIsEditingTotal(false);
+    setDiscount("");
     onOpenChange(false);
-  };
-
-  const handleTotalEdit = () => {
-    setCustomTotal(calculatedTotal.toFixed(2));
-    setIsEditingTotal(true);
-  };
-
-  const handleTotalBlur = () => {
-    setIsEditingTotal(false);
-    if (customTotal === "" || parseFloat(customTotal) === calculatedTotal) {
-      setCustomTotal("");
-    }
   };
 
   return (
@@ -130,17 +125,17 @@ export function NewOrderSheet({ open, onOpenChange }: NewOrderSheetProps) {
       <SheetContent side="bottom" className="h-[90vh] rounded-t-3xl p-0">
         <SheetHeader className="p-4 border-b">
           <SheetTitle className="text-xl">
-            {step === 'type' && "Tipo de Venda"}
-            {step === 'products' && "Adicionar Produtos"}
-            {step === 'review' && "Revisar Pedido"}
+            {step === "type" && "Tipo de Venda"}
+            {step === "products" && "Adicionar Produtos"}
+            {step === "review" && "Revisar Pedido"}
           </SheetTitle>
         </SheetHeader>
 
         <div className="flex-1 overflow-y-auto p-4">
           {/* Step 1: Sales Type */}
-          {step === 'type' && (
+          {step === "type" && (
             <div className="grid grid-cols-2 gap-3">
-              {salesTypes?.map(type => (
+              {salesTypes?.map((type) => (
                 <button
                   key={type.id}
                   className={`card-touch p-6 text-center transition-all ${
@@ -157,33 +152,42 @@ export function NewOrderSheet({ open, onOpenChange }: NewOrderSheetProps) {
           )}
 
           {/* Step 2: Products */}
-          {step === 'products' && (
+          {step === "products" && (
             <div className="space-y-3">
               {availableProducts.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   Nenhum produto em estoque
                 </div>
               ) : (
-                availableProducts.map(product => {
-                  const cartItem = cart.find(i => i.product.id === product.id);
-                  const displayPrice = getPrice(product);
-                  const hasCustomPrice = selectedType && product.product_prices?.some(
-                    pp => pp.sales_type_id === selectedType.id
+                availableProducts.map((product) => {
+                  const cartItem = cart.find(
+                    (i) => i.product.id === product.id
                   );
-                  
+                  const displayPrice = getPrice(product);
+                  const hasCustomPrice =
+                    selectedType &&
+                    product.product_prices?.some(
+                      (pp) => pp.sales_type_id === selectedType.id
+                    );
+
                   return (
-                    <div key={product.id} className="card-touch flex items-center gap-3">
+                    <div
+                      key={product.id}
+                      className="card-touch flex items-center gap-3"
+                    >
                       <div className="flex-1">
                         <div className="font-medium">{product.name}</div>
                         <div className="text-sm text-muted-foreground">
                           R$ {displayPrice.toFixed(2)}
                           {hasCustomPrice && (
-                            <span className="ml-1 text-xs text-primary">(preço {selectedType?.name})</span>
-                          )}
-                          {" "}• {product.stock} em estoque
+                            <span className="ml-1 text-xs text-primary">
+                              (preço {selectedType?.name})
+                            </span>
+                          )}{" "}
+                          • {product.stock} em estoque
                         </div>
                       </div>
-                      
+
                       {cartItem ? (
                         <div className="flex items-center gap-2">
                           <Button
@@ -223,17 +227,24 @@ export function NewOrderSheet({ open, onOpenChange }: NewOrderSheetProps) {
           )}
 
           {/* Step 3: Review */}
-          {step === 'review' && (
+          {step === "review" && (
             <div className="space-y-4">
               <div className="card-touch">
-                <div className="text-sm text-muted-foreground mb-1">Tipo de Venda</div>
+                <div className="text-sm text-muted-foreground mb-1">
+                  Tipo de Venda
+                </div>
                 <div className="font-medium">{selectedType?.name}</div>
               </div>
 
               <div className="card-touch space-y-3">
-                <div className="text-sm text-muted-foreground">Itens do Pedido</div>
-                {cart.map(item => (
-                  <div key={item.product.id} className="flex items-center gap-3">
+                <div className="text-sm text-muted-foreground">
+                  Itens do Pedido
+                </div>
+                {cart.map((item) => (
+                  <div
+                    key={item.product.id}
+                    className="flex items-center gap-3"
+                  >
                     <div className="flex-1">
                       <div className="font-medium">{item.product.name}</div>
                       <div className="text-sm text-muted-foreground">
@@ -253,40 +264,43 @@ export function NewOrderSheet({ open, onOpenChange }: NewOrderSheetProps) {
                     </Button>
                   </div>
                 ))}
-                
-                <div className="border-t pt-3">
-                  <div className="flex justify-between items-center text-sm text-muted-foreground mb-2">
-                    <span>Subtotal</span>
-                    <span>R$ {calculatedTotal.toFixed(2)}</span>
+
+                <div className="border-t pt-3 space-y-2">
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-muted-foreground">Subtotal</span>
+                    <span className="font-medium">
+                      R$ {subtotal.toFixed(2)}
+                    </span>
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span className="font-semibold">Total Final</span>
-                    {isEditingTotal ? (
-                      <div className="flex items-center gap-2">
-                        <span>R$</span>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={customTotal}
-                          onChange={e => setCustomTotal(e.target.value)}
-                          onBlur={handleTotalBlur}
-                          className="w-24 h-8 text-right"
-                          autoFocus
-                        />
-                      </div>
-                    ) : (
-                      <button
-                        className="flex items-center gap-2 text-xl font-bold text-primary hover:underline"
-                        onClick={handleTotalEdit}
-                      >
-                        R$ {total.toFixed(2)}
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                    )}
+
+                  <div className="flex items-center gap-2">
+                    <Percent className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground flex-1">
+                      Desconto
+                    </span>
+                    <span className="text-sm text-muted-foreground">R$</span>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max={subtotal}
+                      placeholder="0.00"
+                      value={discount}
+                      onChange={(e) => setDiscount(e.target.value)}
+                      className="w-24 h-8 text-right"
+                    />
                   </div>
-                  {customTotal !== "" && parseFloat(customTotal) !== calculatedTotal && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Valor ajustado manualmente (original: R$ {calculatedTotal.toFixed(2)})
+
+                  <div className="flex justify-between items-center pt-2 border-t">
+                    <span className="font-bold">Total Final</span>
+                    <span className="text-xl font-bold text-primary">
+                      R$ {total.toFixed(2)}
+                    </span>
+                  </div>
+
+                  {discountValue > 0 && (
+                    <p className="text-xs text-success text-right">
+                      Economia de R$ {discountValue.toFixed(2)}
                     </p>
                   )}
                 </div>
@@ -296,13 +310,19 @@ export function NewOrderSheet({ open, onOpenChange }: NewOrderSheetProps) {
                 <Input
                   placeholder="Nome do cliente (opcional)"
                   value={customerName}
-                  onChange={e => setCustomerName(e.target.value)}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  className="input-touch"
+                />
+                <Input
+                  placeholder="ID do pedido (iFood, Rappi, etc.) - opcional"
+                  value={externalOrderId}
+                  onChange={(e) => setExternalOrderId(e.target.value)}
                   className="input-touch"
                 />
                 <Textarea
                   placeholder="Observações (opcional)"
                   value={notes}
-                  onChange={e => setNotes(e.target.value)}
+                  onChange={(e) => setNotes(e.target.value)}
                   rows={2}
                 />
               </div>
@@ -313,48 +333,50 @@ export function NewOrderSheet({ open, onOpenChange }: NewOrderSheetProps) {
         {/* Footer with actions */}
         <div className="sticky bottom-0 bg-card border-t p-4 space-y-3">
           {/* Cart summary when on products step */}
-          {step === 'products' && cart.length > 0 && (
+          {step === "products" && cart.length > 0 && (
             <div className="flex items-center justify-between bg-accent rounded-xl p-3">
               <div className="flex items-center gap-2">
                 <ShoppingCart className="w-5 h-5 text-primary" />
                 <span className="font-medium">{cart.length} item(s)</span>
               </div>
-              <span className="font-bold text-primary">R$ {calculatedTotal.toFixed(2)}</span>
+              <span className="font-bold text-primary">
+                R$ {subtotal.toFixed(2)}
+              </span>
             </div>
           )}
 
           <div className="flex gap-3">
-            {step !== 'type' && (
+            {step !== "type" && (
               <Button
                 variant="outline"
                 className="flex-1 btn-touch"
-                onClick={() => setStep(step === 'review' ? 'products' : 'type')}
+                onClick={() => setStep(step === "review" ? "products" : "type")}
               >
                 Voltar
               </Button>
             )}
-            
-            {step === 'type' && (
+
+            {step === "type" && (
               <Button
                 className="flex-1 btn-touch"
                 disabled={!selectedType}
-                onClick={() => setStep('products')}
+                onClick={() => setStep("products")}
               >
                 Continuar
               </Button>
             )}
-            
-            {step === 'products' && (
+
+            {step === "products" && (
               <Button
                 className="flex-1 btn-touch"
                 disabled={cart.length === 0}
-                onClick={() => setStep('review')}
+                onClick={() => setStep("review")}
               >
                 Revisar Pedido
               </Button>
             )}
-            
-            {step === 'review' && (
+
+            {step === "review" && (
               <Button
                 className="flex-1 btn-touch"
                 disabled={createOrder.isPending}

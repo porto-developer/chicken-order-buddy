@@ -4,11 +4,11 @@ import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { 
-  useSalesTypes, 
-  useCreateSalesType, 
-  useUpdateSalesType, 
-  useDeleteSalesType 
+import {
+  useSalesTypes,
+  useCreateSalesType,
+  useUpdateSalesType,
+  useDeleteSalesType,
 } from "@/hooks/useSalesTypes";
 import { SalesType } from "@/types/database";
 import {
@@ -61,7 +61,10 @@ export default function SettingsPage() {
     if (!name.trim()) return;
 
     if (editingType) {
-      await updateSalesType.mutateAsync({ id: editingType.id, name: name.trim() });
+      await updateSalesType.mutateAsync({
+        id: editingType.id,
+        name: name.trim(),
+      });
     } else {
       await createSalesType.mutateAsync(name.trim());
     }
@@ -72,10 +75,7 @@ export default function SettingsPage() {
 
   return (
     <div className="page-container">
-      <PageHeader 
-        title="Configurações" 
-        subtitle="Tipos de venda e mais"
-      />
+      <PageHeader title="Configurações" subtitle="Tipos de venda e mais" />
 
       <section>
         <div className="flex items-center justify-between mb-4">
@@ -84,17 +84,16 @@ export default function SettingsPage() {
             Tipos de Venda
           </h2>
           <Button
-            size="sm"
             onClick={() => handleOpenForm()}
+            className="h-12 w-12 rounded-full p-0"
           >
-            <Plus className="w-4 h-4 mr-1" />
-            Adicionar
+            <Plus className="w-4 h-4" />
           </Button>
         </div>
 
         {isLoading ? (
           <div className="space-y-3">
-            {[1, 2, 3].map(i => (
+            {[1, 2, 3].map((i) => (
               <div key={i} className="card-touch animate-pulse">
                 <div className="h-5 bg-muted rounded w-1/2" />
               </div>
@@ -110,12 +109,15 @@ export default function SettingsPage() {
           />
         ) : (
           <div className="space-y-3">
-            {salesTypes?.map(salesType => (
-              <div key={salesType.id} className="card-touch flex items-center gap-3">
+            {salesTypes?.map((salesType) => (
+              <div
+                key={salesType.id}
+                className="card-touch flex items-center gap-3"
+              >
                 <div className="flex-1">
                   <span className="font-medium">{salesType.name}</span>
                 </div>
-                
+
                 <div className="flex gap-1">
                   <Button
                     size="icon"
@@ -125,7 +127,7 @@ export default function SettingsPage() {
                   >
                     <Edit2 className="w-4 h-4" />
                   </Button>
-                  
+
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button
@@ -138,7 +140,9 @@ export default function SettingsPage() {
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
-                        <AlertDialogTitle>Excluir tipo de venda?</AlertDialogTitle>
+                        <AlertDialogTitle>
+                          Excluir tipo de venda?
+                        </AlertDialogTitle>
                         <AlertDialogDescription>
                           "{salesType.name}" será excluído permanentemente.
                         </AlertDialogDescription>
@@ -171,7 +175,7 @@ export default function SettingsPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <Input
               value={name}
-              onChange={e => setName(e.target.value)}
+              onChange={(e) => setName(e.target.value)}
               placeholder="Ex: iFood, Keeta, Retirada..."
               className="input-touch"
               autoFocus
