@@ -65,8 +65,8 @@ export function OrderDetailsSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="h-[85vh] rounded-t-3xl p-0">
-        <SheetHeader className="p-4 border-b">
+      <SheetContent side="bottom" className="h-[85vh] rounded-t-3xl p-0 flex flex-col">
+        <SheetHeader className="p-4 border-b shrink-0">
           <div className="flex items-center justify-between mr-5">
             <SheetTitle className="text-xl">
               Pedido #{order.id.slice(-4).toUpperCase()}
@@ -75,7 +75,7 @@ export function OrderDetailsSheet({
           </div>
         </SheetHeader>
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
           {/* Order Info */}
           <div className="card-touch space-y-2">
             <div className="flex justify-between">
@@ -161,7 +161,7 @@ export function OrderDetailsSheet({
         </div>
 
         {/* Actions */}
-        <div className="sticky bottom-0 bg-card border-t p-4 space-y-3">
+        <div className="shrink-0 bg-card border-t p-4 space-y-3">
           <div className="grid grid-cols-2 gap-3">
             {canMarkPickedUp && (
               <Button

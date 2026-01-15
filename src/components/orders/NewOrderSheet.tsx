@@ -122,8 +122,11 @@ export function NewOrderSheet({ open, onOpenChange }: NewOrderSheetProps) {
 
   return (
     <Sheet open={open} onOpenChange={handleClose}>
-      <SheetContent side="bottom" className="h-[90vh] rounded-t-3xl p-0">
-        <SheetHeader className="p-4 border-b">
+      <SheetContent
+        side="bottom"
+        className="h-[90vh] rounded-t-3xl p-0 flex flex-col"
+      >
+        <SheetHeader className="p-4 border-b shrink-0">
           <SheetTitle className="text-xl">
             {step === "type" && "Tipo de Venda"}
             {step === "products" && "Adicionar Produtos"}
@@ -131,7 +134,7 @@ export function NewOrderSheet({ open, onOpenChange }: NewOrderSheetProps) {
           </SheetTitle>
         </SheetHeader>
 
-        <div className="flex-1 overflow-y-auto p-4">
+        <div className="flex-1 overflow-y-auto p-4 min-h-0">
           {/* Step 1: Sales Type */}
           {step === "type" && (
             <div className="grid grid-cols-2 gap-3">
@@ -228,7 +231,7 @@ export function NewOrderSheet({ open, onOpenChange }: NewOrderSheetProps) {
 
           {/* Step 3: Review */}
           {step === "review" && (
-            <div className="space-y-4">
+            <div className="space-y-4 pb-4">
               <div className="card-touch">
                 <div className="text-sm text-muted-foreground mb-1">
                   Tipo de Venda
@@ -331,7 +334,7 @@ export function NewOrderSheet({ open, onOpenChange }: NewOrderSheetProps) {
         </div>
 
         {/* Footer with actions */}
-        <div className="sticky bottom-0 bg-card border-t p-4 space-y-3">
+        <div className="shrink-0 bg-card border-t p-4 space-y-3">
           {/* Cart summary when on products step */}
           {step === "products" && cart.length > 0 && (
             <div className="flex items-center justify-between bg-accent rounded-xl p-3">
