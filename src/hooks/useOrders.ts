@@ -25,6 +25,14 @@ interface CreateOrderInput {
   notes?: string;
   items: CartItem[];
   discount?: number;
+  payment_method?: string;
+}
+
+interface UpdateOrderInput {
+  customer_name?: string;
+  external_order_id?: string;
+  notes?: string;
+  payment_method?: string;
 }
 
 export function useCreateOrder() {
@@ -50,6 +58,7 @@ export function useCreateOrder() {
           customer_name: input.customer_name || null,
           external_order_id: input.external_order_id || null,
           notes: input.notes || null,
+          payment_method: input.payment_method || null,
           total,
           discount,
           status: "pending" as OrderStatus,
@@ -150,6 +159,42 @@ export function useUpdateOrderStatus() {
         cancelled: "Pedido cancelado",
       };
       toast.success(messages[variables.status]);
+    },
+    onError: () => {
+      toast.error("Erro ao atualizar pedido");
+    },
+  });
+}
+
+export function useUpdateOrder() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: UpdateOrderInput;
+    }) => {
+      const { data: order, error } = await supabase
+        .from("orders")
+        .update({
+          customer_name: data.customer_name !== undefined ? data.customer_name || null : undefined,
+          external_order_id: data.external_order_id !== undefined ? data.external_order_id || null : undefined,
+          notes: data.notes !== undefined ? data.notes || null : undefined,
+          payment_method: data.payment_method !== undefined ? data.payment_method || null : undefined,
+        })
+        .eq("id", id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return order;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      toast.success("Pedido atualizado com sucesso!");
     },
     onError: () => {
       toast.error("Erro ao atualizar pedido");

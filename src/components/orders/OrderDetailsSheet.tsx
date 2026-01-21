@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   Sheet,
   SheetContent,
@@ -6,15 +7,24 @@ import {
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/StatusBadge";
+import { PaymentStatusBadge } from "@/components/PaymentStatusBadge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   useOrders,
   useUpdateOrderStatus,
+  useUpdateOrder,
   useDeleteOrder,
 } from "@/hooks/useOrders";
 import { OrderStatus } from "@/types/database";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Package, Check, X, Trash2 } from "lucide-react";
+import { Package, Check, X, Trash2, Edit, Save } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,9 +50,13 @@ export function OrderDetailsSheet({
 }: OrderDetailsSheetProps) {
   const { data: orders } = useOrders();
   const updateStatus = useUpdateOrderStatus();
+  const updateOrder = useUpdateOrder();
   const deleteOrder = useDeleteOrder();
 
   const order = orders?.find((o) => o.id === orderId);
+  
+  const [isEditingPayment, setIsEditingPayment] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<string>("");
 
   if (!order) return null;
 
@@ -63,6 +77,24 @@ export function OrderDetailsSheet({
     order.status === "pending" || order.status === "picked_up";
   const canCancel = order.status === "pending" || order.status === "picked_up";
 
+  const handleSavePayment = async () => {
+    if (!order) return;
+    
+    await updateOrder.mutateAsync({
+      id: order.id,
+      data: {
+        payment_method: paymentMethod === "none" ? undefined : paymentMethod,
+      },
+    });
+    
+    setIsEditingPayment(false);
+  };
+
+  const handleStartEditPayment = () => {
+    setPaymentMethod(order?.payment_method || "none");
+    setIsEditingPayment(true);
+  };
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
@@ -74,7 +106,12 @@ export function OrderDetailsSheet({
             <SheetTitle className="text-xl">
               Pedido #{order.id.slice(-4).toUpperCase()}
             </SheetTitle>
-            <StatusBadge status={order.status} />
+            <div className="flex gap-2">
+              <StatusBadge status={order.status} />
+              {order.status !== 'cancelled' && (
+                <PaymentStatusBadge paymentMethod={order.payment_method} />
+              )}
+            </div>
           </div>
         </SheetHeader>
 
@@ -107,6 +144,58 @@ export function OrderDetailsSheet({
                 </span>
               </div>
             )}
+            <div className="flex justify-between items-center pt-2 border-t">
+              <span className="text-muted-foreground">Forma de Pagamento</span>
+              {!isEditingPayment ? (
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">
+                    {order.payment_method || "Não informada"}
+                  </span>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8"
+                    onClick={handleStartEditPayment}
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                    <SelectTrigger className="w-40 h-8">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Não informada</SelectItem>
+                      <SelectItem value="PIX">PIX</SelectItem>
+                      <SelectItem value="Crédito">Crédito</SelectItem>
+                      <SelectItem value="Débito">Débito</SelectItem>
+                      <SelectItem value="Dinheiro">Dinheiro</SelectItem>
+                      <SelectItem value="Delivery">Delivery</SelectItem>
+                      <SelectItem value="Fiado">Fiado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8 text-green-600"
+                    onClick={handleSavePayment}
+                    disabled={updateOrder.isPending}
+                  >
+                    <Save className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8"
+                    onClick={() => setIsEditingPayment(false)}
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Items */}

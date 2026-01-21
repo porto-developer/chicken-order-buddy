@@ -11,6 +11,7 @@ import {
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { StatusBadge } from "@/components/StatusBadge";
+import { PaymentStatusBadge } from "@/components/PaymentStatusBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useOrders, useUpdateOrderStatus } from "@/hooks/useOrders";
@@ -278,6 +279,9 @@ export default function OrdersPage() {
                             : `#${order.id.slice(-4).toUpperCase()}`}
                         </span>
                         <StatusBadge status={order.status} />
+                        {order.status !== 'completed' && (
+                          <PaymentStatusBadge paymentMethod={order.payment_method} />
+                        )}
                       </div>
                       <div className="text-sm text-muted-foreground">
                         {order.sales_type?.name} • R$ {order.total.toFixed(2)}
@@ -343,6 +347,9 @@ export default function OrdersPage() {
                                 : `#${order.id.slice(-4).toUpperCase()}`}
                             </span>
                             <StatusBadge status={order.status} />
+                            {order.status !== 'cancelled' && (
+                              <PaymentStatusBadge paymentMethod={order.payment_method} />
+                            )}
                           </div>
                           <div className="text-sm text-muted-foreground">
                             {order.sales_type?.name} • R${" "}

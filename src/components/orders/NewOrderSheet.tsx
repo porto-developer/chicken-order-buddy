@@ -8,6 +8,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Plus, Minus, ShoppingCart, Trash2, Percent } from "lucide-react";
 import { useProducts } from "@/hooks/useProducts";
 import { useSalesTypes } from "@/hooks/useSalesTypes";
@@ -29,6 +36,7 @@ export function NewOrderSheet({ open, onOpenChange }: NewOrderSheetProps) {
   const [externalOrderId, setExternalOrderId] = useState("");
   const [notes, setNotes] = useState("");
   const [discount, setDiscount] = useState<string>("");
+  const [paymentMethod, setPaymentMethod] = useState<string>("");
 
   const { data: products } = useProducts();
   const { data: salesTypes } = useSalesTypes();
@@ -103,6 +111,7 @@ export function NewOrderSheet({ open, onOpenChange }: NewOrderSheetProps) {
       notes: notes || undefined,
       items: cart,
       discount: discountValue > 0 ? discountValue : undefined,
+      payment_method: paymentMethod || undefined,
     });
 
     // Reset
@@ -117,6 +126,7 @@ export function NewOrderSheet({ open, onOpenChange }: NewOrderSheetProps) {
     setExternalOrderId("");
     setNotes("");
     setDiscount("");
+    setPaymentMethod("");
     onOpenChange(false);
   };
 
@@ -322,6 +332,25 @@ export function NewOrderSheet({ open, onOpenChange }: NewOrderSheetProps) {
                   onChange={(e) => setExternalOrderId(e.target.value)}
                   className="input-touch"
                 />
+                <div>
+                  <label className="text-sm text-muted-foreground mb-2 block">
+                    Forma de Pagamento (opcional)
+                  </label>
+                  <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                    <SelectTrigger className="input-touch">
+                      <SelectValue placeholder="Selecione a forma de pagamento" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Nenhuma</SelectItem>
+                      <SelectItem value="PIX">PIX</SelectItem>
+                      <SelectItem value="Crédito">Crédito</SelectItem>
+                      <SelectItem value="Débito">Débito</SelectItem>
+                      <SelectItem value="Dinheiro">Dinheiro</SelectItem>
+                      <SelectItem value="Delivery">Delivery</SelectItem>
+                      <SelectItem value="Fiado">Fiado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
                 <Textarea
                   placeholder="Observações (opcional)"
                   value={notes}

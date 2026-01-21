@@ -41,6 +41,7 @@ export interface Order {
   external_order_id: string | null;
   customer_name: string | null;
   notes: string | null;
+  payment_method: string | null;
   created_at: string;
   updated_at: string;
   sales_type?: SalesType;
